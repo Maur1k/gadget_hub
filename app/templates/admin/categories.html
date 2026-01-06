@@ -1,0 +1,189 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Categories - Admin{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="header">
+    <h1 class="section-title" style="margin-bottom:0">Category Management</h1>
+    <button class="btn btn-primary" onclick="document.getElementById('addModal').classList.add('active')">+ Add Category</button>
+</div>
+
+<!-- Categories Table -->
+<div class="products-section">
+    <div class="section-header">
+        <h3 class="section-title" style="margin-bottom:0">All Categories ({{ categories|length }})</h3>
+    </div>
+    
+    <table class="product-table">
+        <thead>
+            <tr>
+                <th>Category</th>
+                <th>Description</th>
+                <th>Products</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for category in categories %}
+            <tr>
+                <td>
+                    <div class="product-info">
+                        <div class="product-image category-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="product-name">{{ category.name }}</div>
+                            <div style="font-size:12px;color:#9ca3af;">ID: {{ category.id }}</div>
+                        </div>
+                    </div>
+                </td>
+                <td><span class="table-value">{{ category.description or '-' }}</span></td>
+                <td><span class="status-badge approved">{{ category.products.count() }} products</span></td>
+                <td>
+                    <div class="table-actions">
+                        <button class="action-btn secondary" onclick="openEditModal({{ category.id }}, '{{ category.name|e }}', '{{ category.description|e if category.description else '' }}')">Edit</button>
+                        <button class="action-btn" style="background:#fee2e2;color:#dc2626;" onclick="openDeleteModal({{ category.id }}, '{{ category.name|e }}', {{ category.products.count() }})">Delete</button>
+                    </div>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="4" class="empty-state">
+                    <p>No categories yet. Click "Add Category" to create one.</p>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Add Category Modal -->
+<div id="addModal" class="modal-overlay">
+    <div class="modal">
+        <h2 class="modal-title">Add New Category</h2>
+        <form method="POST" action="{{ url_for('admin.add_category') }}">
+            <div class="form-group">
+                <label class="form-label">Category Name</label>
+                <input type="text" name="name" class="form-input" required placeholder="Enter category name">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Description</label>
+                <textarea name="description" class="form-input" rows="3" placeholder="Enter description"></textarea>
+            </div>
+            <div style="display:flex;gap:12px;margin-top:24px;">
+                <button type="submit" class="btn btn-primary" style="flex:1;">Add Category</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal('addModal')">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Category Modal -->
+<div id="editModal" class="modal-overlay">
+    <div class="modal">
+        <h2 class="modal-title">Edit Category</h2>
+        <form id="editForm" method="POST">
+            <div class="form-group">
+                <label class="form-label">Category Name</label>
+                <input type="text" name="name" id="edit-name" class="form-input" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Description</label>
+                <textarea name="description" id="edit-description" class="form-input" rows="3"></textarea>
+            </div>
+            <div style="display:flex;gap:12px;margin-top:24px;">
+                <button type="submit" class="btn btn-primary" style="flex:1;">Save Changes</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal('editModal')">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteModal" class="modal-overlay">
+    <div class="modal">
+        <div style="text-align:center;margin-bottom:20px;">
+            <div style="width:64px;height:64px;background:#fee2e2;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="#dc2626" style="width:32px;height:32px;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+            </div>
+            <h2 class="modal-title" style="margin-bottom:8px;">Delete Category?</h2>
+            <p style="color:#6b7280;font-size:14px;">This action cannot be undone.</p>
+        </div>
+        <div style="background:#f9fafb;border-radius:12px;padding:16px;margin-bottom:20px;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+                <span style="color:#6b7280;">Category</span>
+                <span id="delete-category-name" style="font-weight:600;">Category Name</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;">
+                <span style="color:#6b7280;">Products</span>
+                <span id="delete-product-count" style="font-weight:600;color:#dc2626;">0 products</span>
+            </div>
+        </div>
+        <div id="delete-warning" style="background:#fef3c7;border-radius:12px;padding:12px;margin-bottom:20px;display:none;">
+            <p style="color:#92400e;font-size:13px;margin:0;text-align:center;">
+                <strong>Warning:</strong> Products in this category will become uncategorized.
+            </p>
+        </div>
+        <form id="deleteForm" method="POST">
+            <div style="display:flex;gap:12px;">
+                <button type="button" class="btn btn-secondary" style="flex:1;" onclick="closeModal('deleteModal')">Cancel</button>
+                <button type="submit" class="btn btn-danger" style="flex:1;">Delete Category</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openEditModal(id, name, description) {
+    document.getElementById('editForm').action = '/admin/categories/edit/' + id;
+    document.getElementById('edit-name').value = name;
+    document.getElementById('edit-description').value = description;
+    document.getElementById('editModal').classList.add('active');
+}
+
+function openDeleteModal(id, name, productCount) {
+    document.getElementById('deleteForm').action = '/admin/categories/delete/' + id;
+    document.getElementById('delete-category-name').textContent = name;
+    document.getElementById('delete-product-count').textContent = productCount + ' products';
+    
+    // Show warning if category has products
+    var warning = document.getElementById('delete-warning');
+    if (productCount > 0) {
+        warning.style.display = 'block';
+    } else {
+        warning.style.display = 'none';
+    }
+    
+    document.getElementById('deleteModal').classList.add('active');
+}
+
+function closeModal(modalId) {
+    document.getElementById(modalId).classList.remove('active');
+}
+
+// Close modal when clicking outside
+document.querySelectorAll('.modal-overlay').forEach(function(overlay) {
+    overlay.addEventListener('click', function(e) {
+        if (e.target === overlay) {
+            overlay.classList.remove('active');
+        }
+    });
+});
+
+// Close modal with Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        document.querySelectorAll('.modal-overlay.active').forEach(function(modal) {
+            modal.classList.remove('active');
+        });
+    }
+});
+</script>
+{% endblock %}
