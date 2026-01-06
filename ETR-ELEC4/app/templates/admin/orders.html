@@ -1,0 +1,287 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Orders - Admin{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="header">
+    <h1 class="section-title" style="margin-bottom:0">Order Management</h1>
+</div>
+
+<!-- Filter Tabs -->
+<div style="display:flex;gap:8px;margin-bottom:24px;">
+    <a href="{{ url_for('admin.orders') }}" class="action-btn {% if not current_status %}primary{% else %}secondary{% endif %}">All</a>
+    <a href="{{ url_for('admin.orders', status='Pending') }}" class="action-btn {% if current_status == 'Pending' %}primary{% else %}secondary{% endif %}">Pending</a>
+    <a href="{{ url_for('admin.orders', status='Approved') }}" class="action-btn {% if current_status == 'Approved' %}primary{% else %}secondary{% endif %}">Approved</a>
+    <a href="{{ url_for('admin.orders', status='Shipped') }}" class="action-btn {% if current_status == 'Shipped' %}primary{% else %}secondary{% endif %}">Shipped</a>
+    <a href="{{ url_for('admin.orders', status='Delivered') }}" class="action-btn {% if current_status == 'Delivered' %}primary{% else %}secondary{% endif %}">Delivered</a>
+    <a href="{{ url_for('admin.orders', status='Declined') }}" class="action-btn {% if current_status == 'Declined' %}primary{% else %}secondary{% endif %}">Declined</a>
+</div>
+
+<!-- Orders Table -->
+<div class="products-section">
+    <table class="product-table">
+        <thead>
+            <tr>
+                <th>Order ID</th>
+                <th>Customer</th>
+                <th>Total</th>
+                <th>Payment</th>
+                <th>Status</th>
+                <th>Date</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for order in orders %}
+            <tr>
+                <td><span class="table-value">MJC-{{ order.created_at.strftime('%Y') }}-{{ '%04d'|format(order.id) }}</span></td>
+                <td>
+                    <div class="product-info">
+                        <div class="user-avatar" style="width:36px;height:36px;font-size:13px;">{{ order.customer.username[0]|upper }}</div>
+                        <div>
+                            <div class="product-name">{{ order.customer.username }}</div>
+                            <div style="font-size:12px;color:#9ca3af;">{{ order.customer.email }}</div>
+                        </div>
+                    </div>
+                </td>
+                <td><span class="table-value">₱{{ "{:,.2f}".format(order.total_amount) }}</span></td>
+                <td><span class="table-value">{{ order.payment_method }}</span></td>
+                <td>
+                    <span class="status-badge {{ order.status|lower }}">{{ order.status }}</span>
+                    {% if order.decline_reason %}
+                    <div style="font-size:11px;color:#dc2626;margin-top:4px;">{{ order.decline_reason }}</div>
+                    {% endif %}
+                </td>
+                <td><span class="table-value">{{ order.created_at.strftime('%Y-%m-%d %H:%M') }}</span></td>
+                <td>
+                    <div class="table-actions">
+                        <a href="{{ url_for('admin.order_detail', id=order.id) }}" class="action-btn secondary">View</a>
+                        {% if order.status == 'Pending' %}
+                        <button class="action-btn" style="background:#d1fae5;color:#059669;" onclick="openConfirmModal('approve', {{ order.id }}, '{{ order.customer.username }}', {{ order.total_amount }})">Approve</button>
+                        <button class="action-btn" style="background:#fee2e2;color:#dc2626;" onclick="openDeclineModal({{ order.id }}, '{{ order.customer.username }}', {{ order.total_amount }})">Decline</button>
+                        {% elif order.status == 'Approved' %}
+                        <button class="action-btn" style="background:#dbeafe;color:#2563eb;" onclick="openConfirmModal('ship', {{ order.id }}, '{{ order.customer.username }}', {{ order.total_amount }})">Ship</button>
+                        {% elif order.status == 'Shipped' %}
+                        <button class="action-btn" style="background:#d1fae5;color:#059669;" onclick="openConfirmModal('deliver', {{ order.id }}, '{{ order.customer.username }}', {{ order.total_amount }})">Delivered</button>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="7" class="empty-state">
+                    <p>No orders found</p>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Approve Confirmation Modal -->
+<div id="approveModal" class="modal-overlay">
+    <div class="modal">
+        <div style="text-align:center;margin-bottom:20px;">
+            <div style="width:64px;height:64px;background:#d1fae5;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="#059669" style="width:32px;height:32px;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+            </div>
+            <h2 class="modal-title" style="margin-bottom:8px;">Approve Order?</h2>
+            <p style="color:#6b7280;font-size:14px;">You are about to approve this order.</p>
+        </div>
+        <div style="background:#f9fafb;border-radius:12px;padding:16px;margin-bottom:20px;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+                <span style="color:#6b7280;">Order ID</span>
+                <span id="approve-order-id" style="font-weight:600;">#1</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+                <span style="color:#6b7280;">Customer</span>
+                <span id="approve-customer" style="font-weight:600;">Customer</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;">
+                <span style="color:#6b7280;">Total Amount</span>
+                <span id="approve-amount" style="font-weight:600;color:#059669;">₱0.00</span>
+            </div>
+        </div>
+        <p style="color:#6b7280;font-size:13px;margin-bottom:20px;text-align:center;">The customer will be notified and the order will be prepared for shipping.</p>
+        <form id="approveForm" method="POST">
+            <div style="display:flex;gap:12px;">
+                <button type="button" class="btn btn-secondary" style="flex:1;" onclick="closeModal('approveModal')">Cancel</button>
+                <button type="submit" class="btn" style="flex:1;background:#059669;color:white;">Confirm Approve</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Ship Confirmation Modal -->
+<div id="shipModal" class="modal-overlay">
+    <div class="modal">
+        <div style="text-align:center;margin-bottom:20px;">
+            <div style="width:64px;height:64px;background:#dbeafe;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="#2563eb" style="width:32px;height:32px;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                </svg>
+            </div>
+            <h2 class="modal-title" style="margin-bottom:8px;">Mark as Shipped?</h2>
+            <p style="color:#6b7280;font-size:14px;">Confirm that this order has been shipped.</p>
+        </div>
+        <div style="background:#f9fafb;border-radius:12px;padding:16px;margin-bottom:20px;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+                <span style="color:#6b7280;">Order ID</span>
+                <span id="ship-order-id" style="font-weight:600;">#1</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+                <span style="color:#6b7280;">Customer</span>
+                <span id="ship-customer" style="font-weight:600;">Customer</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;">
+                <span style="color:#6b7280;">Total Amount</span>
+                <span id="ship-amount" style="font-weight:600;color:#2563eb;">₱0.00</span>
+            </div>
+        </div>
+        <p style="color:#6b7280;font-size:13px;margin-bottom:20px;text-align:center;">The customer will be notified that their order is on the way.</p>
+        <form id="shipForm" method="POST">
+            <div style="display:flex;gap:12px;">
+                <button type="button" class="btn btn-secondary" style="flex:1;" onclick="closeModal('shipModal')">Cancel</button>
+                <button type="submit" class="btn" style="flex:1;background:#2563eb;color:white;">Confirm Shipped</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Deliver Confirmation Modal -->
+<div id="deliverModal" class="modal-overlay">
+    <div class="modal">
+        <div style="text-align:center;margin-bottom:20px;">
+            <div style="width:64px;height:64px;background:#d1fae5;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="#059669" style="width:32px;height:32px;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </div>
+            <h2 class="modal-title" style="margin-bottom:8px;">Mark as Delivered?</h2>
+            <p style="color:#6b7280;font-size:14px;">Confirm that this order has been delivered.</p>
+        </div>
+        <div style="background:#f9fafb;border-radius:12px;padding:16px;margin-bottom:20px;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+                <span style="color:#6b7280;">Order ID</span>
+                <span id="deliver-order-id" style="font-weight:600;">#1</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+                <span style="color:#6b7280;">Customer</span>
+                <span id="deliver-customer" style="font-weight:600;">Customer</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;">
+                <span style="color:#6b7280;">Total Amount</span>
+                <span id="deliver-amount" style="font-weight:600;color:#059669;">₱0.00</span>
+            </div>
+        </div>
+        <p style="color:#6b7280;font-size:13px;margin-bottom:20px;text-align:center;">This will complete the order and notify the customer.</p>
+        <form id="deliverForm" method="POST">
+            <div style="display:flex;gap:12px;">
+                <button type="button" class="btn btn-secondary" style="flex:1;" onclick="closeModal('deliverModal')">Cancel</button>
+                <button type="submit" class="btn" style="flex:1;background:#059669;color:white;">Confirm Delivered</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Decline Modal -->
+<div id="declineModal" class="modal-overlay">
+    <div class="modal">
+        <div style="text-align:center;margin-bottom:20px;">
+            <div style="width:64px;height:64px;background:#fee2e2;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="#dc2626" style="width:32px;height:32px;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </div>
+            <h2 class="modal-title" style="margin-bottom:8px;">Decline Order?</h2>
+            <p style="color:#6b7280;font-size:14px;">This action cannot be undone.</p>
+        </div>
+        <div style="background:#f9fafb;border-radius:12px;padding:16px;margin-bottom:20px;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+                <span style="color:#6b7280;">Order ID</span>
+                <span id="decline-order-id" style="font-weight:600;">#1</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+                <span style="color:#6b7280;">Customer</span>
+                <span id="decline-customer" style="font-weight:600;">Customer</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;">
+                <span style="color:#6b7280;">Total Amount</span>
+                <span id="decline-amount" style="font-weight:600;color:#dc2626;">₱0.00</span>
+            </div>
+        </div>
+        <form id="declineForm" method="POST">
+            <div class="form-group">
+                <label class="form-label">Reason for Declining <span style="color:#dc2626;">*</span></label>
+                <textarea name="reason" class="form-input" rows="3" required placeholder="Provide a reason for the customer (e.g., out of stock, payment issue)"></textarea>
+            </div>
+            <div style="display:flex;gap:12px;margin-top:20px;">
+                <button type="button" class="btn btn-secondary" style="flex:1;" onclick="closeModal('declineModal')">Cancel</button>
+                <button type="submit" class="btn btn-danger" style="flex:1;">Confirm Decline</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function formatCurrency(amount) {
+    return '₱' + amount.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+}
+
+function openConfirmModal(action, orderId, customer, amount) {
+    var modalId = action + 'Modal';
+    var formId = action + 'Form';
+    
+    // Set form action URL
+    var actionUrls = {
+        'approve': '/admin/orders/' + orderId + '/approve',
+        'ship': '/admin/orders/' + orderId + '/ship',
+        'deliver': '/admin/orders/' + orderId + '/deliver'
+    };
+    document.getElementById(formId).action = actionUrls[action];
+    
+    // Update modal content
+    document.getElementById(action + '-order-id').textContent = '#' + orderId;
+    document.getElementById(action + '-customer').textContent = customer;
+    document.getElementById(action + '-amount').textContent = formatCurrency(amount);
+    
+    // Show modal
+    document.getElementById(modalId).classList.add('active');
+}
+
+function openDeclineModal(orderId, customer, amount) {
+    document.getElementById('declineForm').action = '/admin/orders/' + orderId + '/decline';
+    document.getElementById('decline-order-id').textContent = '#' + orderId;
+    document.getElementById('decline-customer').textContent = customer;
+    document.getElementById('decline-amount').textContent = formatCurrency(amount);
+    document.getElementById('declineModal').classList.add('active');
+}
+
+function closeModal(modalId) {
+    document.getElementById(modalId).classList.remove('active');
+}
+
+// Close modal when clicking outside
+document.querySelectorAll('.modal-overlay').forEach(function(overlay) {
+    overlay.addEventListener('click', function(e) {
+        if (e.target === overlay) {
+            overlay.classList.remove('active');
+        }
+    });
+});
+
+// Close modal with Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        document.querySelectorAll('.modal-overlay.active').forEach(function(modal) {
+            modal.classList.remove('active');
+        });
+    }
+});
+</script>
+{% endblock %}

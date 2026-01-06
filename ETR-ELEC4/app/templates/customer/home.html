@@ -1,0 +1,142 @@
+{% extends "customer/base.html" %}
+
+{% block title %}Home - MJC Gadget Hub{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-section">
+    <div class="hero-decoration"></div>
+    <div class="hero-content">
+        <span class="hero-badge">New Arrivals</span>
+        <h1 class="hero-title">Discover the Latest Tech Gadgets</h1>
+        <p class="hero-text">Explore our collection of premium smartphones, laptops, tablets, and gaming devices. Quality tech at competitive prices.</p>
+        <a href="{{ url_for('customer.products') }}" class="hero-btn">
+            Shop Now
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+            </svg>
+        </a>
+    </div>
+</section>
+
+<!-- Categories -->
+<section class="category-section">
+    <div class="section-header">
+        <h2 class="section-title">Shop by Category</h2>
+    </div>
+    <div class="category-pills">
+        <a href="{{ url_for('customer.products') }}" class="category-pill">
+            <div class="category-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                </svg>
+            </div>
+            All Products
+        </a>
+        {% for category in categories %}
+        <a href="{{ url_for('customer.products', category=category.id) }}" class="category-pill">
+            <div class="category-icon">
+                {% if 'laptop' in category.name|lower %}
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+                {% elif 'phone' in category.name|lower or 'smartphone' in category.name|lower %}
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+                {% elif 'tablet' in category.name|lower or 'ipad' in category.name|lower %}
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+                {% elif 'gaming' in category.name|lower %}
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+                </svg>
+                {% elif 'accessor' in category.name|lower %}
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                </svg>
+                {% else %}
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                </svg>
+                {% endif %}
+            </div>
+            {{ category.name }}
+        </a>
+        {% endfor %}
+    </div>
+</section>
+
+<!-- Latest Products -->
+<section>
+    <div class="section-header">
+        <h2 class="section-title">Latest Products</h2>
+        <a href="{{ url_for('customer.products') }}" class="view-all-link">
+            View All
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="16" height="16">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+        </a>
+    </div>
+    
+    <div class="products-grid">
+        {% for product in products %}
+        <div class="product-card">
+            <a href="{{ url_for('customer.product_detail', id=product.id) }}">
+                <div class="product-card-image">
+                    {% if product.image %}
+                    <img src="{{ url_for('static', filename='uploads/' + product.image) }}" alt="{{ product.name }}">
+                    {% else %}
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                    </svg>
+                    {% endif %}
+                    {% if product.stock == 0 %}
+                    <span class="product-badge out-of-stock">Out of Stock</span>
+                    {% elif product.stock < 5 %}
+                    <span class="product-badge">Low Stock</span>
+                    {% endif %}
+                </div>
+            </a>
+            <div class="product-card-content">
+                <span class="product-category">{{ product.category.name if product.category else 'Uncategorized' }}</span>
+                <a href="{{ url_for('customer.product_detail', id=product.id) }}">
+                    <h3 class="product-card-name">{{ product.name }}</h3>
+                </a>
+                <p class="product-card-desc">{{ (product.description or 'No description available')[:80] }}{% if product.description and product.description|length > 80 %}...{% endif %}</p>
+                <div class="product-card-footer">
+                    <div class="product-price">
+                        <span>₱</span>{{ "{:,.0f}".format(product.price) }}
+                    </div>
+                    {% if current_user.is_authenticated %}
+                    <form method="POST" action="{{ url_for('customer.add_to_cart', product_id=product.id) }}" style="margin:0;">
+                        <input type="hidden" name="quantity" value="1">
+                        <button type="submit" class="add-to-cart-btn" {% if product.stock == 0 %}disabled{% endif %}>
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                            </svg>
+                        </button>
+                    </form>
+                    {% else %}
+                    <a href="{{ url_for('auth.login') }}" class="add-to-cart-btn">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="empty-state" style="grid-column: 1 / -1;">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+            </svg>
+            <h3>No Products Available</h3>
+            <p>Check back soon for new arrivals!</p>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

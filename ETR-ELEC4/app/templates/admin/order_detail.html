@@ -1,0 +1,148 @@
+{% extends "admin/base.html" %}
+
+{% block title %}MJC-{{ order.created_at.strftime('%Y') }}-{{ '%04d'|format(order.id) }} - Admin{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="header">
+    <div>
+        <a href="{{ url_for('admin.orders') }}" style="color:#6b7280;text-decoration:none;font-size:14px;">← Back to Orders</a>
+        <h1 class="section-title" style="margin-top:8px;margin-bottom:0">MJC-{{ order.created_at.strftime('%Y') }}-{{ '%04d'|format(order.id) }}</h1>
+    </div>
+    <div>
+        <span class="status-badge {{ order.status|lower }}" style="font-size:14px;padding:8px 16px;">{{ order.status }}</span>
+    </div>
+</div>
+
+{% if order.decline_reason %}
+<div style="background:#fee2e2;border-radius:12px;padding:16px;margin-bottom:24px;color:#dc2626;">
+    <strong>Decline Reason:</strong> {{ order.decline_reason }}
+</div>
+{% endif %}
+
+<div style="display:grid;grid-template-columns:2fr 1fr;gap:24px;">
+    <!-- Order Items -->
+    <div class="products-section">
+        <h3 class="section-title">Order Items</h3>
+        <table class="product-table">
+            <thead>
+                <tr>
+                    <th>Product</th>
+                    <th>Price</th>
+                    <th>Quantity</th>
+                    <th>Subtotal</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in order.items %}
+                <tr>
+                    <td>
+                        <div class="product-info">
+                            {% if item.product and item.product.image %}
+                            <img src="{{ url_for('static', filename='uploads/' + item.product.image) }}" class="product-image">
+                            {% else %}
+                            <div class="product-image product-placeholder">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                </svg>
+                            </div>
+                            {% endif %}
+                            <div class="product-name">{{ item.product_name }}</div>
+                        </div>
+                    </td>
+                    <td><span class="table-value">₱{{ "{:,.2f}".format(item.price) }}</span></td>
+                    <td><span class="table-value">{{ item.quantity }}</span></td>
+                    <td><span class="table-value">₱{{ "{:,.2f}".format(item.price * item.quantity) }}</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="3" style="text-align:right;font-weight:600;">Total</td>
+                    <td><span class="table-value" style="font-size:18px;color:#10b981;">₱{{ "{:,.2f}".format(order.total_amount) }}</span></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+    
+    <!-- Order Info -->
+    <div>
+        <div class="products-section" style="margin-bottom:20px;">
+            <h3 class="section-title">Customer</h3>
+            <div class="product-info" style="margin-bottom:16px;">
+                <div class="user-avatar" style="width:48px;height:48px;">{{ order.customer.username[0]|upper }}</div>
+                <div>
+                    <div class="product-name">{{ order.customer.username }}</div>
+                    <div style="font-size:13px;color:#6b7280;">{{ order.customer.email }}</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="products-section" style="margin-bottom:20px;">
+            <h3 class="section-title">Payment</h3>
+            <div style="font-size:14px;color:#374151;">
+                <p><strong>Method:</strong> {{ order.payment_method }}</p>
+                {% if order.payment_proof %}
+                <p style="margin-top:12px;"><strong>Proof:</strong></p>
+                <a href="{{ url_for('static', filename='uploads/' + order.payment_proof) }}" target="_blank">
+                    <img src="{{ url_for('static', filename='uploads/' + order.payment_proof) }}" style="width:100%;border-radius:12px;margin-top:8px;">
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="products-section" style="margin-bottom:20px;">
+            <h3 class="section-title">Shipping Address</h3>
+            <p style="font-size:14px;color:#374151;line-height:1.6;">{{ order.shipping_address or 'N/A' }}</p>
+        </div>
+        
+        <div class="products-section">
+            <h3 class="section-title">Timeline</h3>
+            <div style="font-size:13px;color:#6b7280;">
+                <p><strong>Created:</strong> {{ order.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                <p><strong>Updated:</strong> {{ order.updated_at.strftime('%Y-%m-%d %H:%M') }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Actions -->
+<div class="products-section" style="margin-top:24px;">
+    <h3 class="section-title">Actions</h3>
+    <div style="display:flex;gap:12px;">
+        {% if order.status == 'Pending' %}
+        <form method="POST" action="{{ url_for('admin.approve_order', id=order.id) }}">
+            <button type="submit" class="btn" style="background:#d1fae5;color:#059669;">Approve Order</button>
+        </form>
+        <button class="btn btn-danger" onclick="document.getElementById('declineModal').classList.add('active')">Decline Order</button>
+        {% elif order.status == 'Approved' %}
+        <form method="POST" action="{{ url_for('admin.ship_order', id=order.id) }}">
+            <button type="submit" class="btn" style="background:#dbeafe;color:#2563eb;">Mark as Shipped</button>
+        </form>
+        {% elif order.status == 'Shipped' %}
+        <form method="POST" action="{{ url_for('admin.deliver_order', id=order.id) }}">
+            <button type="submit" class="btn" style="background:#d1fae5;color:#059669;">Mark as Delivered</button>
+        </form>
+        {% else %}
+        <p style="color:#9ca3af;">No actions available for this order status.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Decline Modal -->
+<div id="declineModal" class="modal-overlay">
+    <div class="modal">
+        <h2 class="modal-title">Decline Order MJC-{{ order.created_at.strftime('%Y') }}-{{ '%04d'|format(order.id) }}</h2>
+        <form method="POST" action="{{ url_for('admin.decline_order', id=order.id) }}">
+            <div class="form-group">
+                <label class="form-label">Reason for Declining</label>
+                <textarea name="reason" class="form-input" rows="3" required placeholder="Provide a reason for the customer"></textarea>
+            </div>
+            <div style="display:flex;gap:12px;margin-top:24px;">
+                <button type="submit" class="btn btn-danger" style="flex:1;">Confirm Decline</button>
+                <button type="button" class="btn btn-secondary" onclick="document.getElementById('declineModal').classList.remove('active')">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,220 @@
+{% extends "admin/base.html" %}
+
+{% block title %}User Management - Admin{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="header">
+    <h1 class="section-title" style="margin-bottom:0">User Management</h1>
+</div>
+
+<!-- Users Table -->
+<div class="products-section">
+    <div class="section-header">
+        <h3 class="section-title" style="margin-bottom:0">All Customers ({{ users|length }})</h3>
+    </div>
+    
+    <table class="product-table">
+        <thead>
+            <tr>
+                <th>User</th>
+                <th>Email</th>
+                <th>Registered</th>
+                <th>Orders</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td>
+                    <div class="product-info">
+                        <div class="user-avatar" style="width:40px;height:40px;">{{ user.username[0]|upper }}</div>
+                        <div>
+                            <div class="product-name">{{ user.username }}</div>
+                            <div style="font-size:12px;color:#9ca3af;">ID: {{ user.id }}</div>
+                        </div>
+                    </div>
+                </td>
+                <td><span class="table-value">{{ user.email }}</span></td>
+                <td><span class="table-value">{{ user.created_at.strftime('%Y-%m-%d') }}</span></td>
+                <td><span class="table-value">{{ user.orders.count() }}</span></td>
+                <td>
+                    {% if user.is_active_account %}
+                    <span class="status-badge approved">Active</span>
+                    {% else %}
+                    <span class="status-badge declined">Deactivated</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <div class="table-actions">
+                        {% if user.is_active_account %}
+                        <button class="action-btn" style="background:#fee2e2;color:#dc2626;" onclick="openStatusModal({{ user.id }}, '{{ user.username|e }}', '{{ user.email }}', true)">Deactivate</button>
+                        {% else %}
+                        <button class="action-btn" style="background:#d1fae5;color:#059669;" onclick="openStatusModal({{ user.id }}, '{{ user.username|e }}', '{{ user.email }}', false)">Activate</button>
+                        {% endif %}
+                        <button class="action-btn secondary" onclick="openResetModal({{ user.id }}, '{{ user.username|e }}', '{{ user.email }}')">Reset Password</button>
+                    </div>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="6" class="empty-state">
+                    <p>No customers registered yet</p>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Deactivate User Modal -->
+<div id="deactivateModal" class="modal-overlay">
+    <div class="modal">
+        <div style="text-align:center;margin-bottom:20px;">
+            <div style="width:64px;height:64px;background:#fee2e2;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="#dc2626" style="width:32px;height:32px;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                </svg>
+            </div>
+            <h2 class="modal-title" style="margin-bottom:8px;">Deactivate User?</h2>
+            <p style="color:#6b7280;font-size:14px;">The user will not be able to log in.</p>
+        </div>
+        <div style="background:#f9fafb;border-radius:12px;padding:16px;margin-bottom:20px;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+                <span style="color:#6b7280;">Username</span>
+                <span id="deactivate-username" style="font-weight:600;">Username</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;">
+                <span style="color:#6b7280;">Email</span>
+                <span id="deactivate-email" style="font-weight:600;color:#6b7280;">email@example.com</span>
+            </div>
+        </div>
+        <p style="color:#6b7280;font-size:13px;margin-bottom:20px;text-align:center;">You can reactivate this account at any time.</p>
+        <form id="deactivateForm" method="POST">
+            <div style="display:flex;gap:12px;">
+                <button type="button" class="btn btn-secondary" style="flex:1;" onclick="closeModal('deactivateModal')">Cancel</button>
+                <button type="submit" class="btn btn-danger" style="flex:1;">Deactivate User</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Activate User Modal -->
+<div id="activateModal" class="modal-overlay">
+    <div class="modal">
+        <div style="text-align:center;margin-bottom:20px;">
+            <div style="width:64px;height:64px;background:#d1fae5;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="#059669" style="width:32px;height:32px;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </div>
+            <h2 class="modal-title" style="margin-bottom:8px;">Activate User?</h2>
+            <p style="color:#6b7280;font-size:14px;">The user will be able to log in again.</p>
+        </div>
+        <div style="background:#f9fafb;border-radius:12px;padding:16px;margin-bottom:20px;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+                <span style="color:#6b7280;">Username</span>
+                <span id="activate-username" style="font-weight:600;">Username</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;">
+                <span style="color:#6b7280;">Email</span>
+                <span id="activate-email" style="font-weight:600;color:#6b7280;">email@example.com</span>
+            </div>
+        </div>
+        <p style="color:#6b7280;font-size:13px;margin-bottom:20px;text-align:center;">The user account will be restored to active status.</p>
+        <form id="activateForm" method="POST">
+            <div style="display:flex;gap:12px;">
+                <button type="button" class="btn btn-secondary" style="flex:1;" onclick="closeModal('activateModal')">Cancel</button>
+                <button type="submit" class="btn" style="flex:1;background:#059669;color:white;">Activate User</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Reset Password Modal -->
+<div id="resetModal" class="modal-overlay">
+    <div class="modal">
+        <div style="text-align:center;margin-bottom:20px;">
+            <div style="width:64px;height:64px;background:#dbeafe;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="#2563eb" style="width:32px;height:32px;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                </svg>
+            </div>
+            <h2 class="modal-title" style="margin-bottom:8px;">Reset Password</h2>
+            <p style="color:#6b7280;font-size:14px;">Set a new password for this user.</p>
+        </div>
+        <div style="background:#f9fafb;border-radius:12px;padding:16px;margin-bottom:20px;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+                <span style="color:#6b7280;">Username</span>
+                <span id="reset-username" style="font-weight:600;">Username</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;">
+                <span style="color:#6b7280;">Email</span>
+                <span id="reset-email" style="font-weight:600;color:#6b7280;">email@example.com</span>
+            </div>
+        </div>
+        <form id="resetForm" method="POST">
+            <div class="form-group">
+                <label class="form-label">New Password</label>
+                <input type="text" name="new_password" class="form-input" value="password123" required placeholder="Enter new password">
+                <p style="font-size:12px;color:#9ca3af;margin-top:4px;">Default: password123</p>
+            </div>
+            <div style="display:flex;gap:12px;margin-top:20px;">
+                <button type="button" class="btn btn-secondary" style="flex:1;" onclick="closeModal('resetModal')">Cancel</button>
+                <button type="submit" class="btn" style="flex:1;background:#2563eb;color:white;">Reset Password</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openStatusModal(userId, username, email, isActive) {
+    if (isActive) {
+        // Deactivate modal
+        document.getElementById('deactivateForm').action = '/admin/users/' + userId + '/toggle-status';
+        document.getElementById('deactivate-username').textContent = username;
+        document.getElementById('deactivate-email').textContent = email;
+        document.getElementById('deactivateModal').classList.add('active');
+    } else {
+        // Activate modal
+        document.getElementById('activateForm').action = '/admin/users/' + userId + '/toggle-status';
+        document.getElementById('activate-username').textContent = username;
+        document.getElementById('activate-email').textContent = email;
+        document.getElementById('activateModal').classList.add('active');
+    }
+}
+
+function openResetModal(userId, username, email) {
+    document.getElementById('resetForm').action = '/admin/users/' + userId + '/reset-password';
+    document.getElementById('reset-username').textContent = username;
+    document.getElementById('reset-email').textContent = email;
+    document.getElementById('resetModal').classList.add('active');
+}
+
+function closeModal(modalId) {
+    document.getElementById(modalId).classList.remove('active');
+}
+
+// Close modal when clicking outside
+document.querySelectorAll('.modal-overlay').forEach(function(overlay) {
+    overlay.addEventListener('click', function(e) {
+        if (e.target === overlay) {
+            overlay.classList.remove('active');
+        }
+    });
+});
+
+// Close modal with Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        document.querySelectorAll('.modal-overlay.active').forEach(function(modal) {
+            modal.classList.remove('active');
+        });
+    }
+});
+</script>
+{% endblock %}

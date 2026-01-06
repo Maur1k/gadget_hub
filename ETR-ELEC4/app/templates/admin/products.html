@@ -1,0 +1,281 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Products - Admin{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="header">
+    <h1 class="section-title" style="margin-bottom:0">Product Management</h1>
+    <button class="btn btn-primary" onclick="document.getElementById('addModal').classList.add('active')">+ Add Product</button>
+</div>
+
+<!-- Products Table -->
+<div class="products-section">
+    <div class="section-header">
+        <h3 class="section-title" style="margin-bottom:0">All Products ({{ products|length }})</h3>
+    </div>
+    
+    <table class="product-table">
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th>Price</th>
+                <th>Stock</th>
+                <th>Category</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for product in products %}
+            <tr>
+                <td>
+                    <div class="product-info">
+                        {% if product.image %}
+                        <img src="{{ url_for('static', filename='uploads/' + product.image) }}" alt="{{ product.name }}" class="product-image">
+                        {% else %}
+                        <div class="product-image product-placeholder">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                            </svg>
+                        </div>
+                        {% endif %}
+                        <div>
+                            <div class="product-name">{{ product.name }}</div>
+                            <div style="font-size:12px;color:#9ca3af;">ID: {{ product.id }}</div>
+                        </div>
+                    </div>
+                </td>
+                <td><span class="table-value">₱{{ "{:,.2f}".format(product.price) }}</span></td>
+                <td><span class="table-value">{{ product.stock }}</span></td>
+                <td><span class="table-value">{{ product.category.name if product.category else 'N/A' }}</span></td>
+                <td>
+                    {% if product.is_active %}
+                    <span class="status-badge approved">Active</span>
+                    {% else %}
+                    <span class="status-badge declined">Inactive</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <div class="table-actions">
+                        <button class="action-btn secondary" onclick="openEditModal({{ product.id }}, '{{ product.name|e }}', '{{ product.description|e if product.description else '' }}', {{ product.price }}, {{ product.stock }}, {{ product.category_id or 'null' }}, {{ 'true' if product.is_active else 'false' }}, '{{ product.image or '' }}')">Edit</button>
+                        <button class="action-btn" style="background:#fee2e2;color:#dc2626;" onclick="openDeleteModal({{ product.id }}, '{{ product.name|e }}', {{ product.price }})">Delete</button>
+                    </div>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="6" class="empty-state">
+                    <p>No products yet. Click "Add Product" to create one.</p>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Add Product Modal -->
+<div id="addModal" class="modal-overlay">
+    <div class="modal">
+        <h2 class="modal-title">Add New Product</h2>
+        <form method="POST" action="{{ url_for('admin.add_product') }}" enctype="multipart/form-data">
+            <div class="form-group">
+                <label class="form-label">Product Name</label>
+                <input type="text" name="name" class="form-input" required placeholder="Enter product name">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Description</label>
+                <textarea name="description" class="form-input" rows="3" placeholder="Enter description"></textarea>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                <div class="form-group">
+                    <label class="form-label">Price (₱)</label>
+                    <input type="number" name="price" class="form-input" step="0.01" required placeholder="0.00">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Stock</label>
+                    <input type="number" name="stock" class="form-input" value="0" placeholder="0">
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Category</label>
+                <select name="category_id" class="form-select">
+                    <option value="">-- Select Category --</option>
+                    {% for category in categories %}
+                    <option value="{{ category.id }}">{{ category.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Product Image</label>
+                <input type="file" name="image" class="form-input" accept="image/*" onchange="previewImage(this, 'add-preview')">
+                <div id="add-preview" style="margin-top:10px;"></div>
+            </div>
+            <div style="display:flex;gap:12px;margin-top:24px;">
+                <button type="submit" class="btn btn-primary" style="flex:1;">Add Product</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal('addModal')">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Product Modal -->
+<div id="editModal" class="modal-overlay">
+    <div class="modal">
+        <h2 class="modal-title">Edit Product</h2>
+        <form id="editForm" method="POST" enctype="multipart/form-data">
+            <div class="form-group">
+                <label class="form-label">Product Name</label>
+                <input type="text" name="name" id="edit-name" class="form-input" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Description</label>
+                <textarea name="description" id="edit-description" class="form-input" rows="3"></textarea>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                <div class="form-group">
+                    <label class="form-label">Price (₱)</label>
+                    <input type="number" name="price" id="edit-price" class="form-input" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Stock</label>
+                    <input type="number" name="stock" id="edit-stock" class="form-input">
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Category</label>
+                <select name="category_id" id="edit-category" class="form-select">
+                    <option value="">-- No Category --</option>
+                    {% for category in categories %}
+                    <option value="{{ category.id }}">{{ category.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label" style="display:flex;align-items:center;gap:8px;">
+                    <input type="checkbox" name="is_active" id="edit-active">
+                    Active (visible to customers)
+                </label>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Current Image</label>
+                <div id="edit-current-image" style="margin-bottom:10px;"></div>
+                <label class="form-label">Change Image</label>
+                <input type="file" name="image" class="form-input" accept="image/*" onchange="previewImage(this, 'edit-preview')">
+                <div id="edit-preview" style="margin-top:10px;"></div>
+            </div>
+            <div style="display:flex;gap:12px;margin-top:24px;">
+                <button type="submit" class="btn btn-primary" style="flex:1;">Save Changes</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal('editModal')">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteModal" class="modal-overlay">
+    <div class="modal">
+        <div style="text-align:center;margin-bottom:20px;">
+            <div style="width:64px;height:64px;background:#fee2e2;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="#dc2626" style="width:32px;height:32px;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+            </div>
+            <h2 class="modal-title" style="margin-bottom:8px;">Delete Product?</h2>
+            <p style="color:#6b7280;font-size:14px;">This action cannot be undone.</p>
+        </div>
+        <div style="background:#f9fafb;border-radius:12px;padding:16px;margin-bottom:20px;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+                <span style="color:#6b7280;">Product</span>
+                <span id="delete-product-name" style="font-weight:600;">Product Name</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;">
+                <span style="color:#6b7280;">Price</span>
+                <span id="delete-product-price" style="font-weight:600;color:#dc2626;">₱0.00</span>
+            </div>
+        </div>
+        <p style="color:#6b7280;font-size:13px;margin-bottom:20px;text-align:center;">The product will be permanently removed from the catalog.</p>
+        <form id="deleteForm" method="POST">
+            <div style="display:flex;gap:12px;">
+                <button type="button" class="btn btn-secondary" style="flex:1;" onclick="closeModal('deleteModal')">Cancel</button>
+                <button type="submit" class="btn btn-danger" style="flex:1;">Delete Product</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function formatCurrency(amount) {
+    return '₱' + amount.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+}
+
+function previewImage(input, previewId) {
+    var preview = document.getElementById(previewId);
+    preview.innerHTML = '';
+    if (input.files && input.files[0]) {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            var img = document.createElement('img');
+            img.src = e.target.result;
+            img.style.width = '100px';
+            img.style.height = '100px';
+            img.style.objectFit = 'cover';
+            img.style.borderRadius = '12px';
+            preview.appendChild(img);
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+function openEditModal(id, name, description, price, stock, categoryId, isActive, image) {
+    document.getElementById('editForm').action = '/admin/products/edit/' + id;
+    document.getElementById('edit-name').value = name;
+    document.getElementById('edit-description').value = description;
+    document.getElementById('edit-price').value = price;
+    document.getElementById('edit-stock').value = stock;
+    document.getElementById('edit-category').value = categoryId || '';
+    document.getElementById('edit-active').checked = isActive;
+    
+    var currentImage = document.getElementById('edit-current-image');
+    if (image) {
+        currentImage.innerHTML = '<img src="/static/uploads/' + image + '" style="width:100px;height:100px;object-fit:cover;border-radius:12px;">';
+    } else {
+        currentImage.innerHTML = '<span style="color:#9ca3af;">No image uploaded</span>';
+    }
+    
+    document.getElementById('edit-preview').innerHTML = '';
+    document.getElementById('editModal').classList.add('active');
+}
+
+function openDeleteModal(id, name, price) {
+    document.getElementById('deleteForm').action = '/admin/products/delete/' + id;
+    document.getElementById('delete-product-name').textContent = name;
+    document.getElementById('delete-product-price').textContent = formatCurrency(price);
+    document.getElementById('deleteModal').classList.add('active');
+}
+
+function closeModal(modalId) {
+    document.getElementById(modalId).classList.remove('active');
+}
+
+// Close modal when clicking outside
+document.querySelectorAll('.modal-overlay').forEach(function(overlay) {
+    overlay.addEventListener('click', function(e) {
+        if (e.target === overlay) {
+            overlay.classList.remove('active');
+        }
+    });
+});
+
+// Close modal with Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        document.querySelectorAll('.modal-overlay.active').forEach(function(modal) {
+            modal.classList.remove('active');
+        });
+    }
+});
+</script>
+{% endblock %}
