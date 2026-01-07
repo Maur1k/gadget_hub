@@ -50,8 +50,9 @@ instance/
 .DS_Store
 Thumbs.db
 
-# Uploads (optional - uncomment if you don't want to track uploaded images)
-# app/static/uploads/*
+# Uploads - don't track uploaded images/files
+app/static/uploads/*
+!app/static/uploads/.gitkeep
 
 # Logs
 *.log
