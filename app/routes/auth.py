@@ -5,9 +5,11 @@ This module handles user registration, login, and logout functionality.
 """
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_user, logout_user, login_required, current_user
-from app import db
+from app import mysql
 from app.models import User
+from werkzeug.security import generate_password_hash
 import re
+import pymysql.cursors
 
 bp = Blueprint('auth', __name__, url_prefix='/auth')
 
@@ -52,29 +54,42 @@ def login():
             return render_template('auth/login.html')
         
         # Find user by email
-        user = User.query.filter_by(email=email).first()
+        cursor = mysql.connection.cursor()
+        cursor.execute("SELECT * FROM user WHERE email = %s", (email,))
+        user_data = cursor.fetchone()
+        cursor.close()
         
-        if user is None or not user.check_password(password):
-            flash('Invalid email or password', 'error')
-            return render_template('auth/login.html')
+        if user_data:
+            # Check password
+            # We create a temp user object to use check_password method, 
+            # or just import check_password_hash. 
+            # Since we have the User class, let's use it if we want, or just verify using the data.
+            # User class expects all fields.
+            user = User(
+                id=user_data['id'],
+                username=user_data['username'],
+                email=user_data['email'],
+                password_hash=user_data['password_hash'],
+                is_admin=user_data['is_admin'],
+                is_active_account=user_data['is_active_account']
+            )
+            
+            if user.check_password(password):
+                # Check if account is active
+                if not user.is_active_account:
+                    flash('Your account has been deactivated. Please contact admin.', 'error')
+                    return render_template('auth/login.html')
+                
+                # Login user
+                login_user(user, remember=True)
+                flash(f'Welcome back, {user.username}!', 'success')
+                
+                if user.is_admin:
+                    return redirect(url_for('admin.dashboard'))
+                return redirect(url_for('customer.home'))
         
-        # Check if account is active
-        if not user.is_active_account:
-            flash('Your account has been deactivated. Please contact admin.', 'error')
-            return render_template('auth/login.html')
-        
-        # Login user
-        login_user(user, remember=True)
-        flash(f'Welcome back, {user.username}!', 'success')
-        
-        # Redirect to next page or appropriate dashboard
-        next_page = request.args.get('next')
-        if next_page:
-            return redirect(next_page)
-        
-        if user.is_admin:
-            return redirect(url_for('admin.dashboard'))
-        return redirect(url_for('customer.home'))
+        flash('Invalid email or password', 'error')
+        return render_template('auth/login.html')
     
     return render_template('auth/login.html')
 
@@ -125,26 +140,36 @@ def register():
             flash('Passwords do not match', 'error')
             return render_template('auth/register.html')
         
+        cursor = mysql.connection.cursor()
+        
         # Check if email already exists
-        if User.query.filter_by(email=email).first():
+        cursor.execute("SELECT id FROM user WHERE email = %s", (email,))
+        if cursor.fetchone():
+            cursor.close()
             flash('Email already registered. Please use a different email.', 'error')
             return render_template('auth/register.html')
         
         # Check if username already exists
-        if User.query.filter_by(username=username).first():
+        cursor.execute("SELECT id FROM user WHERE username = %s", (username,))
+        if cursor.fetchone():
+            cursor.close()
             flash('Username already taken. Please choose a different username.', 'error')
             return render_template('auth/register.html')
         
         # Create new user
         try:
-            user = User(email=email, username=username)
-            user.set_password(password)
-            db.session.add(user)
-            db.session.commit()
+            password_hash = generate_password_hash(password)
+            cursor.execute(
+                "INSERT INTO user (email, username, password_hash) VALUES (%s, %s, %s)",
+                (email, username, password_hash)
+            )
+            mysql.connection.commit()
+            cursor.close()
             flash('Registration successful! Please login to continue.', 'success')
             return redirect(url_for('auth.login'))
         except Exception as e:
-            db.session.rollback()
+            mysql.connection.rollback()
+            cursor.close()
             flash('Registration failed. Please try again.', 'error')
             return render_template('auth/register.html')
     
@@ -158,4 +183,5 @@ def logout():
     logout_user()
     flash(f'You have been logged out. Goodbye, {username}!', 'info')
     return redirect(url_for('auth.login'))
+
 

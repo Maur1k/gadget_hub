@@ -5,8 +5,8 @@ This module provides API endpoints for products, categories, cart count, and das
 """
 from flask import Blueprint, jsonify, request
 from flask_login import login_required, current_user
-from app import db
-from app.models import Product, Category, Order, CartItem
+from app import mysql
+import pymysql.cursors
 
 bp = Blueprint('api', __name__, url_prefix='/api')
 
@@ -19,13 +19,22 @@ def get_products():
         JSON array of product objects
     """
     try:
-        products = Product.query.filter_by(is_active=True).all()
+        cursor = mysql.connection.cursor()
+        cursor.execute("""
+            SELECT p.*, c.name as category_name 
+            FROM product p 
+            LEFT JOIN category c ON p.category_id = c.id 
+            WHERE p.is_active = 1
+        """)
+        products = cursor.fetchall()
+        cursor.close()
+        
         return jsonify([{
-            'id': p.id,
-            'name': p.name,
-            'price': p.price,
-            'stock': p.stock,
-            'category': p.category.name if p.category else None
+            'id': p['id'],
+            'name': p['name'],
+            'price': p['price'],
+            'stock': p['stock'],
+            'category': p['category_name']
         } for p in products])
     except Exception as e:
         return jsonify({'error': 'Failed to fetch products'}), 500
@@ -39,11 +48,20 @@ def get_categories():
         JSON array of category objects with product counts
     """
     try:
-        categories = Category.query.all()
+        cursor = mysql.connection.cursor()
+        cursor.execute("""
+            SELECT c.id, c.name, COUNT(p.id) as product_count 
+            FROM category c 
+            LEFT JOIN product p ON c.id = p.category_id 
+            GROUP BY c.id, c.name
+        """)
+        categories = cursor.fetchall()
+        cursor.close()
+        
         return jsonify([{
-            'id': c.id,
-            'name': c.name,
-            'product_count': c.products.count()
+            'id': c['id'],
+            'name': c['name'],
+            'product_count': c['product_count']
         } for c in categories])
     except Exception as e:
         return jsonify({'error': 'Failed to fetch categories'}), 500
@@ -58,8 +76,11 @@ def cart_count():
         JSON object with cart count
     """
     try:
-        count = CartItem.query.filter_by(user_id=current_user.id).count()
-        return jsonify({'count': count})
+        cursor = mysql.connection.cursor()
+        cursor.execute("SELECT COUNT(*) as count FROM cart_item WHERE user_id = %s", (current_user.id,))
+        result = cursor.fetchone()
+        cursor.close()
+        return jsonify({'count': result['count']})
     except Exception as e:
         return jsonify({'error': 'Failed to fetch cart count'}), 500
 
@@ -76,14 +97,32 @@ def dashboard_stats():
         return jsonify({'error': 'Unauthorized'}), 403
     
     try:
+        cursor = mysql.connection.cursor()
+        
+        cursor.execute("SELECT COUNT(*) as count FROM `order`")
+        total_orders = cursor.fetchone()['count']
+        
+        cursor.execute("SELECT COUNT(*) as count FROM `order` WHERE status = 'Pending'")
+        pending_orders = cursor.fetchone()['count']
+        
+        cursor.execute("SELECT COUNT(*) as count FROM product")
+        total_products = cursor.fetchone()['count']
+        
+        cursor.execute("""
+            SELECT SUM(total_amount) as revenue 
+            FROM `order` 
+            WHERE status IN ('Approved', 'Shipped', 'Delivered')
+        """)
+        result = cursor.fetchone()
+        total_revenue = result['revenue'] if result and result['revenue'] else 0
+        
+        cursor.close()
+        
         return jsonify({
-            'total_orders': Order.query.count(),
-            'pending_orders': Order.query.filter_by(status='Pending').count(),
-            'total_products': Product.query.count(),
-            'total_revenue': db.session.query(db.func.sum(Order.total_amount)).filter(
-                Order.status.in_(['Approved', 'Shipped', 'Delivered'])
-            ).scalar() or 0
+            'total_orders': total_orders,
+            'pending_orders': pending_orders,
+            'total_products': total_products,
+            'total_revenue': total_revenue
         })
     except Exception as e:
         return jsonify({'error': 'Failed to fetch dashboard statistics'}), 500
-

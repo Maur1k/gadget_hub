@@ -6,26 +6,7 @@
 <!-- Header -->
 <div class="header">
     <h1 class="section-title" style="margin-bottom:0">Sales Reports</h1>
-    <div style="display:flex;gap:8px;">
-        <a href="{{ url_for('admin.download_report', period='daily') }}" class="btn btn-secondary" style="display:flex;align-items:center;gap:6px;">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:16px;height:16px;">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-            Daily PDF
-        </a>
-        <a href="{{ url_for('admin.download_report', period='weekly') }}" class="btn btn-secondary" style="display:flex;align-items:center;gap:6px;">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:16px;height:16px;">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-            Weekly PDF
-        </a>
-        <a href="{{ url_for('admin.download_report', period='monthly') }}" class="btn btn-secondary" style="display:flex;align-items:center;gap:6px;">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:16px;height:16px;">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-            Monthly PDF
-        </a>
-    </div>
+
 </div>
 
 <!-- Period Filter -->

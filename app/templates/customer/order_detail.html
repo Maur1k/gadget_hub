@@ -118,7 +118,7 @@
     <!-- Order Items -->
     <div class="form-section">
         <h3 class="form-section-title">Order Items</h3>
-        {% for item in order.items %}
+        {% for item in order['items'] %}
         <div style="display:flex;gap:12px;padding:12px 0;border-bottom:1px solid #f3f4f6;">
             <div style="width:50px;height:50px;background:#f3f4f6;border-radius:10px;display:flex;align-items:center;justify-content:center;overflow:hidden;">
                 {% if item.product and item.product.image %}
