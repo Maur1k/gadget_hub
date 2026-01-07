@@ -20,7 +20,7 @@ bp = Blueprint('admin', __name__, url_prefix='/admin')
 
 # Helper classes for template compatibility
 class ProductsWrapper:
-    """Wrapper to mimic SQLAlchemy relationship with count() method."""
+
     def __init__(self, count):
         self._count = count
     def count(self):
@@ -28,7 +28,7 @@ class ProductsWrapper:
 
 
 class OrdersWrapper:
-    """Wrapper to mimic SQLAlchemy relationship with count() method."""
+
     def __init__(self, count):
         self._count = count
     def count(self):
@@ -495,8 +495,10 @@ def orders():
     
     if orders_raw:
         for row in orders_raw:
-            row['customer'] = {'username': row['username'], 'email': row['email']}
-            orders.append(row)
+            # Convert Row to dict to avoid method conflicts
+            order_dict = dict(row)
+            order_dict['customer'] = {'username': order_dict['username'], 'email': order_dict['email']}
+            orders.append(order_dict)
             
     cursor.close()
     return render_template('admin/orders.html', orders=orders, current_status=status_filter)
@@ -531,17 +533,17 @@ def order_detail(id):
     """, (id,))
     items_raw = cursor.fetchall()
     
-    # Structure data for template
-    order = order_data
+    # Structure data for template - convert Row to dict to avoid method conflicts
+    order = dict(order_data)
     order['customer'] = {'username': order['username'], 'email': order['email'], 'id': order['user_id']}
     
-    # Helper to mimic SQLAlchemy relationship access if strictly needed, 
-    # but best to pass items separately or attached to order dict
+    # Convert items to dicts and structure for template
     order['items'] = []
     if items_raw:
         for item in items_raw:
-            item['product'] = {'name': item['product_name'], 'image': item['product_image']}
-            order['items'].append(item)
+            item_dict = dict(item)  # Convert Row to plain dict
+            item_dict['product'] = {'name': item_dict['product_name'], 'image': item_dict['product_image']} if item_dict.get('product_image') else None
+            order['items'].append(item_dict)
             
     cursor.close()
     return render_template('admin/order_detail.html', order=order)

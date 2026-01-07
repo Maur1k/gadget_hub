@@ -32,7 +32,7 @@
                 </div>
                 <div class="order-info-item">
                     <span class="order-info-label">Items</span>
-                    <span class="order-info-value">{{ order.items.count() }} item{% if order.items.count() != 1 %}s{% endif %}</span>
+                    <span class="order-info-value">{{ order['items'].count() }} item{% if order['items'].count() != 1 %}s{% endif %}</span>
                 </div>
             </div>
             <div class="order-actions">

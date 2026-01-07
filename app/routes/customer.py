@@ -17,18 +17,43 @@ import pymysql.cursors
 
 bp = Blueprint('customer', __name__)
 
+
+# Helper class for template compatibility
+class ItemsWrapper:
+    """Wrapper to mimic SQLAlchemy relationship with count() method."""
+    def __init__(self, count):
+        self._count = count
+    def count(self):
+        return self._count
+
+
 @bp.route('/')
 def home():
     cursor = mysql.connection.cursor()
     cursor.execute("""
-        SELECT * FROM product 
-        WHERE is_active = 1 
-        ORDER BY created_at DESC LIMIT 8
+        SELECT p.*, c.name as category_name 
+        FROM product p 
+        LEFT JOIN category c ON p.category_id = c.id 
+        WHERE p.is_active = 1 
+        ORDER BY p.created_at DESC LIMIT 8
     """)
-    products = cursor.fetchall()
+    products_raw = cursor.fetchall()
+    
+    # Convert Row objects to dicts and structure category for template
+    products = []
+    for product in products_raw:
+        product_dict = dict(product)
+        # Structure category for template compatibility
+        if product_dict.get('category_name'):
+            product_dict['category'] = {'name': product_dict['category_name']}
+        else:
+            product_dict['category'] = None
+        products.append(product_dict)
     
     cursor.execute("SELECT * FROM category")
-    categories = cursor.fetchall()
+    categories_raw = cursor.fetchall()
+    # Convert Row objects to plain dicts
+    categories = [dict(cat) for cat in categories_raw]
     
     cursor.close()
     return render_template('customer/home.html', products=products, categories=categories)
@@ -54,10 +79,23 @@ def products():
     query += " ORDER BY p.created_at DESC"
     
     cursor.execute(query, tuple(params))
-    products = cursor.fetchall()
+    products_raw = cursor.fetchall()
+    
+    # Convert Row objects to dicts and structure category for template
+    products = []
+    for product in products_raw:
+        product_dict = dict(product)
+        # Structure category for template compatibility
+        if product_dict.get('category_name'):
+            product_dict['category'] = {'name': product_dict['category_name']}
+        else:
+            product_dict['category'] = None
+        products.append(product_dict)
     
     cursor.execute("SELECT * FROM category")
-    categories = cursor.fetchall()
+    categories_raw = cursor.fetchall()
+    # Convert Row objects to plain dicts
+    categories = [dict(cat) for cat in categories_raw]
     
     cursor.close()
     
@@ -76,14 +114,14 @@ def product_detail(id):
         LEFT JOIN category c ON p.category_id = c.id 
         WHERE p.id = %s
     """, (id,))
-    product = cursor.fetchone()
+    product_raw = cursor.fetchone()
     cursor.close()
     
-    if not product:
+    if not product_raw:
         return render_template('errors/404.html'), 404
         
-    # Ensure nested dictionary if template uses dot notation for category
-    # Although DictCursor returns dict, accessing 'p.category.name' in template requires 'category' key
+    # Convert Row to dict and structure category for template
+    product = dict(product_raw)
     if product.get('category_name'):
         product['category'] = {'name': product['category_name']}
     else:
@@ -484,11 +522,24 @@ def orders():
     """
     cursor = mysql.connection.cursor()
     cursor.execute("""
-        SELECT * FROM `order` 
-        WHERE user_id = %s 
-        ORDER BY created_at DESC
+        SELECT o.*, COUNT(oi.id) as item_count 
+        FROM `order` o 
+        LEFT JOIN order_item oi ON o.id = oi.order_id 
+        WHERE o.user_id = %s 
+        GROUP BY o.id
+        ORDER BY o.created_at DESC
     """, (current_user.id,))
-    orders = cursor.fetchall()
+    orders_raw = cursor.fetchall()
+    # Convert Row objects to plain dicts and add items wrapper for template compatibility
+    orders = []
+    for order in orders_raw:
+        # Create a new plain dict from the Row object
+        order_dict = {}
+        for key, value in order.items():
+            order_dict[key] = value
+        # Add items wrapper with count method for template compatibility
+        order_dict['items'] = ItemsWrapper(order_dict.get('item_count', 0))
+        orders.append(order_dict)
     cursor.close()
     return render_template('customer/orders.html', orders=orders)
 
