@@ -111,34 +111,34 @@ def register():
         confirm_password = request.form.get('confirm_password', '')
         
         # Validate input fields
-        if not email or not username or not password:
+        if not email or not username or not password or not confirm_password:
             flash('All fields are required', 'error')
-            return render_template('auth/register.html')
+            return render_template('auth/register.html', email=email, username=username)
         
         # Validate email format
         if not validate_email(email):
             flash('Invalid email format', 'error')
-            return render_template('auth/register.html')
+            return render_template('auth/register.html', email=email, username=username)
         
         # Validate username
         if len(username) < 3:
             flash('Username must be at least 3 characters long', 'error')
-            return render_template('auth/register.html')
+            return render_template('auth/register.html', email=email, username=username)
         
         if not username.replace('_', '').replace('-', '').isalnum():
             flash('Username can only contain letters, numbers, hyphens, and underscores', 'error')
-            return render_template('auth/register.html')
+            return render_template('auth/register.html', email=email, username=username)
         
         # Validate password
         is_valid, error_msg = validate_password(password)
         if not is_valid:
             flash(error_msg, 'error')
-            return render_template('auth/register.html')
+            return render_template('auth/register.html', email=email, username=username)
         
         # Check password confirmation
         if password != confirm_password:
             flash('Passwords do not match', 'error')
-            return render_template('auth/register.html')
+            return render_template('auth/register.html', email=email, username=username)
         
         cursor = mysql.connection.cursor()
         
@@ -147,14 +147,14 @@ def register():
         if cursor.fetchone():
             cursor.close()
             flash('Email already registered. Please use a different email.', 'error')
-            return render_template('auth/register.html')
+            return render_template('auth/register.html', email=email, username=username)
         
         # Check if username already exists
         cursor.execute("SELECT id FROM user WHERE username = %s", (username,))
         if cursor.fetchone():
             cursor.close()
             flash('Username already taken. Please choose a different username.', 'error')
-            return render_template('auth/register.html')
+            return render_template('auth/register.html', email=email, username=username)
         
         # Create new user
         try:

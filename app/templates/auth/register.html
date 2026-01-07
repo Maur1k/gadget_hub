@@ -28,15 +28,19 @@
             <form method="POST" class="auth-form">
                 <div class="form-group">
                     <label class="form-label">Username</label>
-                    <input type="text" name="username" class="form-input" required placeholder="Choose a username">
+                    <input type="text" name="username" class="form-input" required placeholder="Choose a username" value="{{ username or '' }}">
                 </div>
                 <div class="form-group">
                     <label class="form-label">Email Address</label>
-                    <input type="email" name="email" class="form-input" required placeholder="Enter your email">
+                    <input type="email" name="email" class="form-input" required placeholder="Enter your email" value="{{ email or '' }}">
                 </div>
                 <div class="form-group">
                     <label class="form-label">Password</label>
                     <input type="password" name="password" class="form-input" required placeholder="Create a password">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Confirm Password</label>
+                    <input type="password" name="confirm_password" class="form-input" required placeholder="Confirm your password">
                 </div>
                 <button type="submit" class="auth-btn">Create Account</button>
             </form>
