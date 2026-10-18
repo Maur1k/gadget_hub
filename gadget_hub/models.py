@@ -1,16 +1,11 @@
-"""
-Database models helper.
 
-Since we are using Flask-Mysqldb, we use raw SQL in routes.
-This module strictly provides the User class for Flask-Login compatibility.
-"""
-from app import mysql, login_manager
+from gadget_hub import mysql, login_manager
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 
 @login_manager.user_loader
 def load_user(id):
-    """Load user by ID for Flask-Login."""
+    """Loads a user by their ID for Flask-Login."""
     cursor = mysql.connection.cursor()
     cursor.execute("SELECT * FROM user WHERE id = %s", (int(id),))
     user_data = cursor.fetchone()
@@ -50,7 +45,7 @@ class User(UserMixin):
         self.password_hash = generate_password_hash(password)
         # Note: Saving to DB must be done via SQL UPDATE in the controller
     
-    def check_password(self, password):
+    def check_password(self, password): 
         return check_password_hash(self.password_hash, password)
     
     def __repr__(self):

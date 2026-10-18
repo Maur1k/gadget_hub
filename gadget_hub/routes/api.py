@@ -3,9 +3,9 @@ API routes for JSON endpoints.
 
 This module provides API endpoints for products, categories, cart count, and dashboard statistics.
 """
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify
 from flask_login import login_required, current_user
-from app import mysql
+from gadget_hub import mysql
 import pymysql.cursors
 
 bp = Blueprint('api', __name__, url_prefix='/api')

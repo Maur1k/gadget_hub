@@ -51,12 +51,11 @@ instance/
 Thumbs.db
 
 # Uploads - don't track uploaded images/files
-app/static/uploads/*
-!app/static/uploads/.gitkeep
+gadget_hub/static/uploads/*
+!gadget_hub/static/uploads/.gitkeep
 
 # Logs
 *.log
 
 # PowerPoint files (if you don't want to track lesson files)
 *.pptx
-

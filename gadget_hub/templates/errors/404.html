@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+
+{% block title %}Page Not Found - MJC Gadget Hub{% endblock %}
+
+{% block content %}
+<main style="max-width: 720px; margin: 80px auto; padding: 24px; text-align: center;">
+    <h1>Page not found</h1>
+    <p>The page or product you requested does not exist.</p>
+    <a href="{{ url_for('customer.home') }}">Return to the store</a>
+</main>
+{% endblock %}

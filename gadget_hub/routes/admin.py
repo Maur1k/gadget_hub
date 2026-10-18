@@ -9,8 +9,8 @@ This module handles all administrative functionality including:
 """
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
-from app import mysql
-from app.models import User
+from gadget_hub import mysql
+from gadget_hub.models import User
 from functools import wraps
 from datetime import datetime, timedelta
 import os
@@ -212,8 +212,8 @@ def add_product():
                     return redirect(url_for('admin.products'))
                 
                 # Process and save image with consistent sizing and white background
-                from app.utils.image_processor import process_and_save_upload
-                upload_folder = os.path.join('app', 'static', 'uploads')
+                from gadget_hub.utils.image_processor import process_and_save_upload
+                upload_folder = os.path.join('gadget_hub', 'static', 'uploads')
                 image_filename = process_and_save_upload(file, upload_folder)
         
         cursor.execute("""
@@ -305,8 +305,8 @@ def edit_product(id):
                 file_ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else ''
                 if file_ext in allowed_extensions:
                     # Process and save image with consistent sizing and white background
-                    from app.utils.image_processor import process_and_save_upload
-                    upload_folder = os.path.join('app', 'static', 'uploads')
+                    from gadget_hub.utils.image_processor import process_and_save_upload
+                    upload_folder = os.path.join('gadget_hub', 'static', 'uploads')
                     image_filename = process_and_save_upload(file, upload_folder)
                     # Note: We keep the old file on disk (or could delete it)
                 else:
@@ -451,24 +451,43 @@ def edit_category(id):
 @admin_required
 def delete_category(id):
     cursor = mysql.connection.cursor()
+    
+    # Check if category exists
+    cursor.execute("SELECT name FROM category WHERE id = %s", (id,))
+    category = cursor.fetchone()
+    
+    if not category:
+        cursor.close()
+        flash('Category not found', 'error')
+        return redirect(url_for('admin.categories'))
+    
+    category_name = category['name']
+    
+    # Check if category has any products
+    cursor.execute("SELECT COUNT(*) as count FROM product WHERE category_id = %s", (id,))
+    product_count = cursor.fetchone()['count']
+    
+    if product_count > 0:
+        cursor.close()
+        flash(f'Cannot delete category "{category_name}" because it contains {product_count} product(s). Please remove or reassign all products first.', 'error')
+        return redirect(url_for('admin.categories'))
+    
+    # Category is empty, safe to delete
     try:
         cursor.execute("DELETE FROM category WHERE id = %s", (id,))
         mysql.connection.commit()
-        flash('Category deleted successfully', 'success')
+        flash(f'Category "{category_name}" deleted successfully', 'success')
     except Exception as e:
         mysql.connection.rollback()
-        flash('Failed to delete category (it may be in use)', 'error')
+        flash('Failed to delete category. Please try again.', 'error')
     finally:
         cursor.close()
         
     return redirect(url_for('admin.categories'))
 
-# ============================================================================
 # FEATURE 1: PROCESS CUSTOMER ORDERS
 # Admin can view, approve, decline orders. If declined, provide reason for customers to know.
-# ============================================================================
-# Order Management
-# VIEW ORDERS - Admin can view all orders
+
 @bp.route('/orders')
 @login_required
 @admin_required
@@ -476,39 +495,39 @@ def orders():
     status_filter = request.args.get('status', '')
     cursor = mysql.connection.cursor()
     
-    query = """
+    # Fetches all orders and joins each order with the user table
+    query = """ 
         SELECT o.*, u.username, u.email 
         FROM `order` o 
         JOIN user u ON o.user_id = u.id
     """
     
-    if status_filter:
+    if status_filter: # If a status filter is provided, add it to the query
         query += " WHERE o.status = %s"
         query += " ORDER BY o.created_at DESC"
         cursor.execute(query, (status_filter,))
-    else:
+    else: # If no status filter is provided, fetch all orders
         query += " ORDER BY o.created_at DESC"
         cursor.execute(query)
         
-    orders_raw = cursor.fetchall()
-    orders = []
+    orders_raw = cursor.fetchall() # Fetch all orders from the database
+    orders = [] 
     
-    if orders_raw:
-        for row in orders_raw:
-            # Convert Row to dict to avoid method conflicts
+    if orders_raw: 
+        for row in orders_raw: 
             order_dict = dict(row)
             order_dict['customer'] = {'username': order_dict['username'], 'email': order_dict['email']}
-            orders.append(order_dict)
+            orders.append(order_dict) # Add the order to the list
             
-    cursor.close()
-    return render_template('admin/orders.html', orders=orders, current_status=status_filter)
+    cursor.close() 
+    return render_template('admin/orders.html', orders=orders, current_status=status_filter) 
 
 # VIEW ORDER DETAILS
 @bp.route('/orders/<int:id>')
-@login_required
-@admin_required
-def order_detail(id):
-    cursor = mysql.connection.cursor()
+@login_required 
+@admin_required 
+def order_detail(id): 
+    cursor = mysql.connection.cursor() 
     
     # Get order with customer info
     cursor.execute("""
@@ -524,24 +543,24 @@ def order_detail(id):
         flash('Order not found', 'error')
         return redirect(url_for('admin.orders'))
         
-    # Get order items with product info
+    # Fetches all order items and joins each order item with the product table
     cursor.execute("""
         SELECT oi.*, p.name as product_name, p.image as product_image
         FROM order_item oi
         LEFT JOIN product p ON oi.product_id = p.id
         WHERE oi.order_id = %s
     """, (id,))
-    items_raw = cursor.fetchall()
+    items_raw = cursor.fetchall() 
     
     # Structure data for template - convert Row to dict to avoid method conflicts
     order = dict(order_data)
     order['customer'] = {'username': order['username'], 'email': order['email'], 'id': order['user_id']}
     
-    # Convert items to dicts and structure for template
+    # Converts each item to a dictionary and adds the product information to the order
     order['items'] = []
     if items_raw:
         for item in items_raw:
-            item_dict = dict(item)  # Convert Row to plain dict
+            item_dict = dict(item)  # Converts each item to a dictionary
             item_dict['product'] = {'name': item_dict['product_name'], 'image': item_dict['product_image']} if item_dict.get('product_image') else None
             order['items'].append(item_dict)
             
@@ -559,8 +578,8 @@ def approve_order(id):
             UPDATE `order` 
             SET status = 'Approved', decline_reason = NULL, updated_at = NOW() 
             WHERE id = %s
-        """, (id,))
-        mysql.connection.commit()
+        """, (id,))  # Updates the order status to approved
+        mysql.connection.commit() 
         flash('Order approved', 'success')
     except Exception as e:
         mysql.connection.rollback()
@@ -575,7 +594,7 @@ def approve_order(id):
 def ship_order(id):
     cursor = mysql.connection.cursor()
     try:
-        cursor.execute("UPDATE `order` SET status = 'Shipped', updated_at = NOW() WHERE id = %s", (id,))
+        cursor.execute("UPDATE `order` SET status = 'Shipped', updated_at = NOW() WHERE id = %s", (id,)) # Updates the order status to shipped
         mysql.connection.commit()
         flash('Order marked as shipped', 'success')
     except Exception as e:
@@ -591,7 +610,7 @@ def ship_order(id):
 def deliver_order(id):
     cursor = mysql.connection.cursor()
     try:
-        cursor.execute("UPDATE `order` SET status = 'Delivered', updated_at = NOW() WHERE id = %s", (id,))
+        cursor.execute("UPDATE `order` SET status = 'Delivered', updated_at = NOW() WHERE id = %s", (id,)) # Updates the order status to delivered
         mysql.connection.commit()
         flash('Order marked as delivered', 'success')
     except Exception as e:
@@ -602,18 +621,15 @@ def deliver_order(id):
     return redirect(url_for('admin.orders'))
 
 # DECLINE ORDER - Admin can decline orders and provide reason for customers to know
-@bp.route('/orders/<int:id>/decline', methods=['POST'])
+@bp.route('/orders/<int:id>/decline', methods=['POST']) 
 @login_required
 @admin_required
 def decline_order(id):
-    """
-    Decline an order and provide reason for customers.
-    """
     cursor = mysql.connection.cursor()
     
     # Get current status
-    cursor.execute("SELECT status FROM `order` WHERE id = %s", (id,))
-    order = cursor.fetchone()
+    cursor.execute("SELECT status FROM `order` WHERE id = %s", (id,)) 
+    order = cursor.fetchone() 
     
     if not order:
         cursor.close()
@@ -630,7 +646,7 @@ def decline_order(id):
         flash('Cannot decline an order that has already been shipped or delivered', 'error')
         return redirect(url_for('admin.order_detail', id=id))
     
-    reason = request.form.get('reason', '').strip()
+    reason = request.form.get('reason', '').strip() # Gets the reason for declining the order
     if not reason:
         reason = 'No reason provided'
     
@@ -650,7 +666,7 @@ def decline_order(id):
             UPDATE `order` 
             SET status = 'Declined', decline_reason = %s, updated_at = NOW() 
             WHERE id = %s
-        """, (reason, id))
+        """, (reason, id)) # Updates the order status to declined and adds the reason for declining the order
         
         mysql.connection.commit()
         flash(f'Order declined. Reason: {reason}', 'success')
@@ -674,17 +690,17 @@ def decline_order(id):
 @login_required
 @admin_required
 def reports():
-    period = request.args.get('period', 'daily')
+    period = request.args.get('period', 'daily') 
     
-    today = datetime.utcnow().date()
+    today = datetime.utcnow().date() # Gets the current date
     
-    if period == 'daily':
+    if period == 'daily': # If the period is daily, set the start and end date to the current date
         start_date = today
         end_date = today + timedelta(days=1)
-    elif period == 'weekly':
+    elif period == 'weekly': # If the period is weekly, set the start and end date to the current date minus 7 days
         start_date = today - timedelta(days=7)
         end_date = today + timedelta(days=1)
-    else:  # monthly
+    else:  # If the period is monthly, set the start and end date to the current date minus 30 days
         start_date = today - timedelta(days=30)
         end_date = today + timedelta(days=1)
     
@@ -696,15 +712,15 @@ def reports():
         WHERE created_at >= %s AND created_at < %s
         AND status IN ('Approved', 'Shipped', 'Delivered')
         ORDER BY created_at DESC
-    """, (start_date, end_date))
+    """, (start_date, end_date)) # Fetches all orders that were created between the start and end date and have a status of approved, shipped, or delivered
     orders_raw = cursor.fetchall()
     orders = []
-    if orders_raw:
+    if orders_raw: # If there are orders, convert each row to a dictionary and add it to the list
         for row in orders_raw:
             orders.append(row)
             
-    total_revenue = sum(o['total_amount'] for o in orders)
-    total_orders = len(orders)
+    total_revenue = sum(o['total_amount'] for o in orders) # Calculates the total revenue of the orders
+    total_orders = len(orders) # Calculates the total number of orders
     
     # Get detailed order data for report table
     cursor.execute("""
@@ -764,13 +780,12 @@ def users():
         WHERE u.is_admin = 0 
         GROUP BY u.id
         ORDER BY u.created_at DESC
-    """)
+    """) # Fetches all users and joins each user with the order table
     users_raw = cursor.fetchall()
-    # Convert to plain dicts and add orders relationship-like structure for template
     users = []
-    for user in users_raw:
+    for user in users_raw: # If there are users, convert each row to a dictionary and add it to the list
         user_dict = dict(user)
-        user_dict['orders'] = OrdersWrapper(user_dict['order_count'])
+        user_dict['orders'] = OrdersWrapper(user_dict['order_count']) 
         users.append(user_dict)
     cursor.close()
     return render_template('admin/users.html', users=users)
@@ -794,7 +809,7 @@ def toggle_user_status(id):
         flash('Cannot modify admin status', 'error')
         return redirect(url_for('admin.users'))
     
-    new_status = 0 if user['is_active_account'] else 1
+    new_status = 0 if user['is_active_account'] else 1 # If the user is active, set the new status to 0, otherwise set it to 1
     
     try:
         cursor.execute("UPDATE user SET is_active_account = %s WHERE id = %s", (new_status, id))
@@ -815,7 +830,7 @@ def toggle_user_status(id):
 @admin_required
 def reset_user_password(id):
     cursor = mysql.connection.cursor()
-    cursor.execute("SELECT is_admin, username FROM user WHERE id = %s", (id,))
+    cursor.execute("SELECT is_admin, username FROM user WHERE id = %s", (id,)) 
     user = cursor.fetchone()
     
     if not user:
@@ -828,7 +843,7 @@ def reset_user_password(id):
         flash('Cannot reset admin password through this interface', 'error')
         return redirect(url_for('admin.users'))
     
-    new_password = request.form.get('new_password', '').strip()
+    new_password = request.form.get('new_password', '').strip() # Gets the new password from the form
     
     # Validate password strength
     if len(new_password) < 6:
@@ -850,4 +865,3 @@ def reset_user_password(id):
         cursor.close()
     
     return redirect(url_for('admin.users'))
-

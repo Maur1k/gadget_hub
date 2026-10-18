@@ -5,8 +5,8 @@ This module handles user registration, login, and logout functionality.
 """
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_user, logout_user, login_required, current_user
-from app import mysql
-from app.models import User
+from gadget_hub import mysql
+from gadget_hub.models import User
 from werkzeug.security import generate_password_hash
 import re
 import pymysql.cursors

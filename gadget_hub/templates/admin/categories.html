@@ -45,7 +45,11 @@
                 <td>
                     <div class="table-actions">
                         <button class="action-btn secondary" onclick="openEditModal({{ category.id }}, '{{ category.name|e }}', '{{ category.description|e if category.description else '' }}')">Edit</button>
+                        {% if category.products.count() > 0 %}
+                        <button class="action-btn" style="background:#fee2e2;color:#dc2626;opacity:0.6;cursor:not-allowed;" title="Cannot delete category with products" disabled>Delete</button>
+                        {% else %}
                         <button class="action-btn" style="background:#fee2e2;color:#dc2626;" onclick="openDeleteModal({{ category.id }}, '{{ category.name|e }}', {{ category.products.count() }})">Delete</button>
+                        {% endif %}
                     </div>
                 </td>
             </tr>

@@ -1,5 +1,5 @@
-from app import create_app, mysql
-from app.models import User
+from gadget_hub import create_app, mysql
+from gadget_hub.models import User
 
 app = create_app()
 

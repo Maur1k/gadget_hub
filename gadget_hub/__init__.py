@@ -70,7 +70,7 @@ def create_app(config_class=Config):
     login_manager.init_app(app)
     
     # Register blueprints
-    from app.routes import auth, admin, customer, api
+    from gadget_hub.routes import auth, admin, customer, api
     app.register_blueprint(auth.bp)
     app.register_blueprint(admin.bp)
     app.register_blueprint(customer.bp)

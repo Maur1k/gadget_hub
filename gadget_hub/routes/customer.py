@@ -9,8 +9,8 @@ This module handles all customer-facing functionality including:
 """
 from flask import Blueprint, render_template, redirect, url_for, flash, request, session
 from flask_login import login_required, current_user
-from app import mysql
-# from app.models import Product # Removed
+from gadget_hub import mysql
+# from gadget_hub.models import Product # Removed
 from datetime import datetime
 import os
 import pymysql.cursors
@@ -472,7 +472,7 @@ def checkout():
             
             from werkzeug.utils import secure_filename
             filename = secure_filename(f"payment_{datetime.now().timestamp()}_{file.filename}")
-            filepath = os.path.join('app', 'static', 'uploads', filename)
+            filepath = os.path.join('gadget_hub', 'static', 'uploads', filename)
             file.save(filepath)
             payment_proof_filename = filename
             
@@ -586,4 +586,3 @@ def order_detail(id):
             
     cursor.close()
     return render_template('customer/order_detail.html', order=order)
-
